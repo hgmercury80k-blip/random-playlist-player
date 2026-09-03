@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>랜덤 10초 플레이어</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --text: #f2f3f5;
+    --sub: #9aa0ab;
+    --accent: #4f8cff;
+    --accent-hover: #3a75e8;
+    --danger: #ff5c6c;
+    --border: #2a2e37;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+  h1 {
+    font-size: 1.25rem;
+    margin: 8px 0 4px;
+  }
+  p.desc {
+    color: var(--sub);
+    font-size: 0.9rem;
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--sub);
+    margin-bottom: 6px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #11141a;
+    color: var(--text);
+    font-size: 1rem;
+  }
+  input[type="text"]:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  button {
+    flex: 1 1 auto;
+    min-width: 140px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, opacity .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .player-shell {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #player { width: 100%; height: 100%; }
+  .status {
+    font-size: 0.85rem;
+    color: var(--sub);
+    margin-top: 10px;
+    min-height: 1.4em;
+  }
+  .status.error { color: var(--danger); }
+  .now-playing {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #11141a;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .now-playing .title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .now-playing .meta {
+    font-size: 0.8rem;
+    color: var(--sub);
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--sub);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hint {
+    font-size: 0.78rem;
+    color: var(--sub);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎲 재생목록 랜덤 10초 플레이어</h1>
+  <p class="desc">
+    유튜브 재생목록 URL을 넣으면, 목록 안에서 무작위 곡을 골라 그 곡의 무작위 구간 10초만 재생합니다.
+    API 키 없이 유튜브 공식 IFrame Player를 그대로 사용합니다.
+  </p>
+
+  <div class="card">
+    <label for="playlistInput">재생목록 URL 또는 재생목록 ID</label>
+    <input type="text" id="playlistInput" placeholder="https://www.youtube.com/playlist?list=PL..." autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="row">
+      <button class="primary" id="loadBtn">재생목록 불러오기</button>
+    </div>
+    <div class="status" id="loadStatus"></div>
+  </div>
+
+  <div class="card">
+    <div class="player-shell">
+      <div id="player"></div>
+    </div>
+    <div class="row">
+      <button class="primary" id="randomBtn" disabled>🎲 랜덤 10초 재생</button>
+      <button class="secondary" id="stopBtn" disabled>정지</button>
+    </div>
+    <div class="status" id="playStatus"></div>
+    <div class="now-playing" id="nowPlaying" style="display:none;">
+      <div class="title" id="npTitle">-</div>
+      <div class="meta" id="npMeta">-</div>
+    </div>
+  </div>
+
+  <p class="hint">
+    * 모바일 브라우저에서는 첫 재생이 반드시 버튼 탭(사용자 동작) 직후에 일어나야 소리가 재생됩니다.<br>
+    * 이 파일을 그대로 더블클릭해서 열어도 대부분 동작하지만, 일부 모바일 브라우저는 file:// 로 연 페이지에서 유튜브 iframe 통신을 제한할 수 있습니다.
+    안 되면 아무 정적 호스팅(예: GitHub Pages, Netlify, 혹은 <code>python -m http.server</code>)에 올려서 http(s)로 열어보세요.
+  </p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var player = null;
+  var playerReady = false;
+  var currentPlaylistIds = [];
+  var pauseTimer = null;
+  var durationPollTimer = null;
+  var durationPollDeadline = 0;
+
+  var els = {
+    input: document.getElementById('playlistInput'),
+    loadBtn: document.getElementById('loadBtn'),
+    loadStatus: document.getElementById('loadStatus'),
+    randomBtn: document.getElementById('randomBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    playStatus: document.getElementById('playStatus'),
+    nowPlaying: document.getElementById('nowPlaying'),
+    npTitle: document.getElementById('npTitle'),
+    npMeta: document.getElementById('npMeta'),
+  };
+
+  function setLoadStatus(msg, isError) {
+    els.loadStatus.textContent = msg || '';
+    els.loadStatus.className = 'status' + (isError ? ' error' : '');
+  }
+
+  function setPlayStatus(msg, isError) {
+    els.playStatus.textContent = msg || '';
+    els.playStatus.className = 'status' + (isError ? ' error' : '');
+  }
+
+  function extractPlaylistId(raw) {
+    if (!raw) return null;
+    raw = raw.trim();
+    // 이미 순수 ID로 보이는 경우 (PL/UU/FL/RD/LL/OL 등으로 시작)
+    if (/^[A-Za-z0-9_-]{10,}$/.test(raw) && raw.indexOf('http') !== 0 && raw.indexOf('/') === -1) {
+      return raw;
+    }
+    try {
+      var url = new URL(raw);
+      var listParam = url.searchParams.get('list');
+      if (listParam) return listParam;
+    } catch (e) {
+      // URL 파싱 실패 시 정규식으로 재시도
+      var m = raw.match(/[?&]list=([A-Za-z0-9_-]+)/);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  // ---- YouTube IFrame API 로드 ----
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', {
+      height: '100%',
+      width: '100%',
+      playerVars: {
+        playsinline: 1,      // iOS에서 전체화면 강제 방지
+        controls: 1,
+        rel: 0,
+        modestbranding: 1
+      },
+      events: {
+        onReady: function () {
+          playerReady = true;
+        },
+        onApiChange: onPlaylistApiChange, // 재생목록 메타데이터가 준비되면 빠르게 신호를 줌
+        onStateChange: onPlayerStateChange,
+        onError: onPlayerError
+      }
+    });
+  };
+
+  function onPlaylistApiChange() {
+    // getPlaylist()가 채워지는 시점 (전체 영상 상세정보를 기다리지 않고 ID 목록만 옴 -> 빠름)
+    var list = safeGetPlaylist();
+    if (list && list.length > 0) {
+      currentPlaylistIds = list;
+      setLoadStatus('재생목록 로드 완료 (' + list.length + '곡). 이제 랜덤 재생을 눌러보세요.');
+      els.randomBtn.disabled = false;
+    }
+  }
+
+  function safeGetPlaylist() {
+    try {
+      return player.getPlaylist() || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function onPlayerError(e) {
+    setPlayStatus('영상 재생 오류가 발생했어요 (코드 ' + e.data + '). 다시 시도합니다.', true);
+    // 재생 불가 영상(비공개/삭제 등)이면 자동으로 다른 곡 재시도
+    setTimeout(playRandomClip, 800);
+  }
+
+  var lastVideoIdForDurationWait = null;
+
+  function onPlayerStateChange(e) {
+    if (e.data === YT.PlayerState.PLAYING) {
+      var data = player.getVideoData();
+      if (data && data.video_id !== lastVideoIdForDurationWait) {
+        // 새 영상 재생 시작: 아직 구간 이동 전이라면 duration 체크 루틴이 처리
+      }
+    }
+  }
+
+  // ---- 재생목록 불러오기 ----
+  els.loadBtn.addEventListener('click', function () {
+    var id = extractPlaylistId(els.input.value);
+    if (!id) {
+      setLoadStatus('재생목록 URL 또는 ID를 확인해주세요. 예: https://www.youtube.com/playlist?list=PL...', true);
+      return;
+    }
+    if (!playerReady) {
+      setLoadStatus('플레이어 초기화 중입니다. 잠시 후 다시 시도해주세요.', true);
+      return;
+    }
+
+    els.randomBtn.disabled = true;
+    currentPlaylistIds = [];
+    setLoadStatus('재생목록 불러오는 중...');
+
+    // cuePlaylist: 전체 목록을 재생하지 않고 "대기"만 시켜서 로딩이 훨씬 빠름
+    player.cuePlaylist({ listType: 'playlist', list: id, index: 0 });
+
+    // onApiChange가 안 오는 예외 상황 대비 폴백 폴링 (최대 8초)
+    var deadline = Date.now() + 8000;
+    var poll = setInterval(function () {
+      var list = safeGetPlaylist();
+      if (list && list.length > 0) {
+        clearInterval(poll);
+        currentPlaylistIds = list;
+        setLoadStatus('재생목록 로드 완료 (' + list.length + '곡). 이제 랜덤 재생을 눌러보세요.');
+        els.randomBtn.disabled = false;
+      } else if (Date.now() > deadline) {
+        clearInterval(poll);
+        if (currentPlaylistIds.length === 0) {
+          setLoadStatus('재생목록을 불러오지 못했어요. 목록이 비공개이거나 ID가 올바른지 확인해주세요.', true);
+        }
+      }
+    }, 250);
+  });
+
+  // ---- 랜덤 10초 재생 ----
+  function playRandomClip() {
+    if (!currentPlaylistIds.length) {
+      setPlayStatus('먼저 재생목록을 불러와주세요.', true);
+      return;
+    }
+
+    clearTimeout(pauseTimer);
+    clearInterval(durationPollTimer);
+
+    var randomIndex = Math.floor(Math.random() * currentPlaylistIds.length);
+    setPlayStatus('곡 선택 중...');
+    els.nowPlaying.style.display = 'none';
+
+    player.playVideoAt(randomIndex);
+    els.stopBtn.disabled = false;
+
+    // 영상의 duration이 잡힐 때까지 대기 후 랜덤 구간으로 이동
+    durationPollDeadline = Date.now() + 6000;
+    durationPollTimer = setInterval(function () {
+      var duration = 0;
+      try { duration = player.getDuration(); } catch (e) {}
+
+      if (duration && duration > 0) {
+        clearInterval(durationPollTimer);
+        var clipLength = 10;
+        var maxStart = Math.max(0, duration - clipLength);
+        var startAt = Math.random() * maxStart;
+
+        player.seekTo(startAt, true);
+        player.playVideo();
+
+        var data = player.getVideoData();
+        showNowPlaying(data, randomIndex, startAt, duration);
+        setPlayStatus('재생 중 (' + startAt.toFixed(1) + 's ~ ' + (startAt + clipLength).toFixed(1) + 's)');
+
+        pauseTimer = setTimeout(function () {
+          player.pauseVideo();
+          setPlayStatus('10초 재생 완료. 다시 눌러서 다른 곡을 들어보세요.');
+        }, clipLength * 1000);
+
+      } else if (Date.now() > durationPollDeadline) {
+        clearInterval(durationPollTimer);
+        setPlayStatus('영상 정보를 불러오지 못했어요. 다른 곡으로 다시 시도합니다.', true);
+        setTimeout(playRandomClip, 500);
+      }
+    }, 150);
+  }
+
+  function showNowPlaying(data, index, startAt, duration) {
+    if (!data) return;
+    els.nowPlaying.style.display = 'block';
+    els.npTitle.textContent = data.title || '(제목 없음)';
+    els.npMeta.textContent =
+      (index + 1) + ' / ' + currentPlaylistIds.length + '곡 · ' +
+      '전체 길이 ' + formatTime(duration);
+  }
+
+  function formatTime(sec) {
+    sec = Math.round(sec);
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  els.randomBtn.addEventListener('click', playRandomClip);
+
+  els.stopBtn.addEventListener('click', function () {
+    clearTimeout(pauseTimer);
+    clearInterval(durationPollTimer);
+    try { player.pauseVideo(); } catch (e) {}
+    els.stopBtn.disabled = true;
+    setPlayStatus('정지했어요.');
+  });
+
+  // YouTube IFrame API 스크립트 삽입
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+})();
+</script>
+</body>
+</html>
