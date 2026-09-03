@@ -175,6 +175,9 @@
       <button class="primary" id="randomBtn" disabled>🎲 랜덤 30초 재생</button>
       <button class="secondary" id="stopBtn" disabled>정지</button>
     </div>
+    <div class="row">
+      <button class="secondary" id="revealBtn" disabled>👀 정답 보기 (제목 / 아티스트)</button>
+    </div>
     <div class="status" id="playStatus"></div>
     <div class="now-playing" id="nowPlaying" style="display:none;">
       <div class="title" id="npTitle">-</div>
@@ -206,11 +209,14 @@
     loadStatus: document.getElementById('loadStatus'),
     randomBtn: document.getElementById('randomBtn'),
     stopBtn: document.getElementById('stopBtn'),
+    revealBtn: document.getElementById('revealBtn'),
     playStatus: document.getElementById('playStatus'),
     nowPlaying: document.getElementById('nowPlaying'),
     npTitle: document.getElementById('npTitle'),
     npMeta: document.getElementById('npMeta'),
   };
+
+  var pendingAnswer = null; // 아직 공개되지 않은 현재 곡의 제목/아티스트 정보
 
   function setLoadStatus(msg, isError) {
     els.loadStatus.textContent = msg || '';
@@ -364,7 +370,7 @@
 
     var randomIndex = Math.floor(Math.random() * currentPlaylistIds.length);
     setPlayStatus('곡 선택 중...');
-    els.nowPlaying.style.display = 'none';
+    hideAnswer();
 
     player.playVideoAt(randomIndex);
     els.stopBtn.disabled = false;
@@ -385,7 +391,7 @@
         player.playVideo();
 
         var data = player.getVideoData();
-        showNowPlaying(data, randomIndex, startAt, duration);
+        stashAnswer(data, randomIndex, duration);
         setPlayStatus('재생 중 (' + startAt.toFixed(1) + 's ~ ' + (startAt + clipLength).toFixed(1) + 's)');
 
         pauseTimer = setTimeout(function () {
@@ -401,14 +407,35 @@
     }, 150);
   }
 
-  function showNowPlaying(data, index, startAt, duration) {
-    if (!data) return;
-    els.nowPlaying.style.display = 'block';
-    els.npTitle.textContent = data.title || '(제목 없음)';
-    els.npMeta.textContent =
-      (index + 1) + ' / ' + currentPlaylistIds.length + '곡 · ' +
-      '전체 길이 ' + formatTime(duration);
+  function hideAnswer() {
+    pendingAnswer = null;
+    els.nowPlaying.style.display = 'none';
+    els.revealBtn.disabled = true;
+    els.revealBtn.textContent = '👀 정답 보기 (제목 / 아티스트)';
   }
+
+  function stashAnswer(data, index, duration) {
+    if (!data) return;
+    pendingAnswer = {
+      title: data.title || '(제목 없음)',
+      author: data.author || '(아티스트 정보 없음)',
+      index: index,
+      duration: duration
+    };
+    els.revealBtn.disabled = false;
+  }
+
+  els.revealBtn.addEventListener('click', function () {
+    if (!pendingAnswer) return;
+    els.nowPlaying.style.display = 'block';
+    els.npTitle.textContent = pendingAnswer.title;
+    els.npMeta.textContent =
+      pendingAnswer.author + ' · ' +
+      (pendingAnswer.index + 1) + ' / ' + currentPlaylistIds.length + '곡 · ' +
+      '전체 길이 ' + formatTime(pendingAnswer.duration);
+    els.revealBtn.disabled = true;
+    els.revealBtn.textContent = '✅ 공개됨';
+  });
 
   function formatTime(sec) {
     sec = Math.round(sec);
