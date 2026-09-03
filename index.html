@@ -340,14 +340,16 @@
     loadPlaylist(els.input.value);
   });
 
-  // ---- URL에 ?list=재생목록ID 가 있으면 자동으로 불러오기 ----
-  (function autoLoadFromUrl() {
+  // 기본으로 자동 로드할 재생목록 (필요하면 이 값만 바꾸면 됨)
+  var DEFAULT_PLAYLIST_ID = 'PLLi-sCa64-gQ';
+
+  // ---- 페이지를 열면 자동으로 재생목록 불러오기 ----
+  // URL에 ?list=재생목록ID 를 붙이면 그 목록을, 없으면 DEFAULT_PLAYLIST_ID를 사용
+  (function autoLoad() {
     var params = new URLSearchParams(window.location.search);
-    var listParam = params.get('list');
-    if (listParam) {
-      els.input.value = 'https://www.youtube.com/playlist?list=' + listParam;
-      loadPlaylist(listParam);
-    }
+    var listParam = params.get('list') || DEFAULT_PLAYLIST_ID;
+    els.input.value = 'https://www.youtube.com/playlist?list=' + listParam;
+    loadPlaylist(listParam);
   })();
 
   // ---- 랜덤 10초 재생 ----
