@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>랜덤 10초 플레이어</title>
+<title>랜덤 30초 플레이어</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -152,9 +152,9 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🎲 재생목록 랜덤 10초 플레이어</h1>
+  <h1>🎲 재생목록 랜덤 30초 플레이어</h1>
   <p class="desc">
-    유튜브 재생목록 URL을 넣으면, 목록 안에서 무작위 곡을 골라 그 곡의 무작위 구간 10초만 재생합니다.
+    유튜브 재생목록 URL을 넣으면, 목록 안에서 무작위 곡을 골라 그 곡의 무작위 구간 30초만 재생합니다.
     API 키 없이 유튜브 공식 IFrame Player를 그대로 사용합니다.
   </p>
 
@@ -172,7 +172,7 @@
       <div id="player"></div>
     </div>
     <div class="row">
-      <button class="primary" id="randomBtn" disabled>🎲 랜덤 10초 재생</button>
+      <button class="primary" id="randomBtn" disabled>🎲 랜덤 30초 재생</button>
       <button class="secondary" id="stopBtn" disabled>정지</button>
     </div>
     <div class="status" id="playStatus"></div>
@@ -360,7 +360,7 @@
 
       if (duration && duration > 0) {
         clearInterval(durationPollTimer);
-        var clipLength = 10;
+        var clipLength = 30;
         var maxStart = Math.max(0, duration - clipLength);
         var startAt = Math.random() * maxStart;
 
@@ -373,7 +373,7 @@
 
         pauseTimer = setTimeout(function () {
           player.pauseVideo();
-          setPlayStatus('10초 재생 완료. 다시 눌러서 다른 곡을 들어보세요.');
+          setPlayStatus('30초 재생 완료. 다시 눌러서 다른 곡을 들어보세요.');
         }, clipLength * 1000);
 
       } else if (Date.now() > durationPollDeadline) {
